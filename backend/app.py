@@ -103,7 +103,7 @@ class HumanPlayer(Player):
                 continue
 
             return move - 1
-
+3
 
 """
 “Meet the AI! This one doesn’t guess,
@@ -130,7 +130,7 @@ class AIPlayer(Player):
         ‘If I play here (action), 
         how did it go?’ That’s Q(state, action).”
         """
-        self.q = {}
+        self.q = {} # diary or notebook
 
         # previous move during the game
         self.move = None
@@ -141,8 +141,8 @@ class AIPlayer(Player):
     """
     “Let’s make a to-do list of all empty spots 
     where I can move.”
-    """
-    # Available / empty cell
+    Give me a list of empty spots I can play i
+    """ 
     def available_moves(self,board):
         return [i for i in range(9) if board[i] == ' ']
     
@@ -174,11 +174,13 @@ class AIPlayer(Player):
 
         # action with epsilon probability (exploration)
         if random.random() < self.EPSILON:
-            # this is 0-8 index
-            self.move = random.choice(actions)
+            self.move = random.choice(actions) #  try something random to discover new strategies
             return self.move 
         
-        # take actions with highest Q value (exploitation)
+        """ 
+        take actions with highest Q value (exploitation)
+        “Look up all the past scores for possible moves in this situation.”
+        """
         q_values = [self.get_q(self.board, a) for a in actions]
         max_q_values = max(q_values)
 
