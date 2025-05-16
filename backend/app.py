@@ -5,6 +5,7 @@ so I need randomness!”
 import random 
 
 import os 
+import pickle
 
 """
 “Okay, I’ll use 
@@ -23,7 +24,7 @@ And in each game, I’ll give it a 40% chance
 to just try something new, even if it doesn't seem smart. 
 Why? Because that's how we discover new tricks — exploration!”
 """
-TRAINING_EPOCHS = 100000
+TRAINING_EPOCHS = 100
 TRAINING_EPSILON = 0.4  
 
 
@@ -50,7 +51,7 @@ class Player:
                 inside a class for organizational purposes.
     """
     @staticmethod
-    def show_board(board):
+    def show_board(board,message=''):
 
         # Clear the terminal screen
         os.system('cls' if os.name == 'nt' else 'clear')
@@ -67,6 +68,9 @@ class Player:
         print(f" {format_cell(6)} | {format_cell(7)} | {format_cell(8)} ")
         print("\n")
 
+        if message: 
+            print(f"[ Oops : {message} ]\n")
+
 class HumanPlayer(Player):
 
     def reward(self, value,board):
@@ -76,25 +80,29 @@ class HumanPlayer(Player):
     “Ask the human, ‘Hey, where do you want to play (1–9)?’
     Keep asking if they say something silly
     """
-    def make_move(self,board):
+    def make_move(self, board):
+        message = ""  # Store the message to display
 
         while True: 
+            self.show_board(board, message)
+            move = input("Your next move (cell index 1 - 9): ")
+
             try: 
-                self.show_board(board)
-                move = input("Your next move (cell index 1 - 9): ")
                 move = int(move)
 
                 if not (move - 1 in range(9)):
-                    raise ValueError 
+                    message = "Invalid number. Choose between 1 and 9."
+                    continue
 
                 if board[move - 1] != ' ':
-                    print("\n! That box has been filed. Try different one")
-                    continue # keep asking
+                    message = "That box is already filled. Try a different one."
+                    continue
 
             except ValueError:
-                print("\n! Invalid move, try again")
-            else:
-                return move-1 # cause computer counts from 0, but you count from 1.”
+                message = "Invalid input. Enter a number between 1 and 9."
+                continue
+
+            return move - 1
 
 
 """
@@ -202,6 +210,33 @@ class AIPlayer(Player):
             self.q[(self.board,self.move)] = prev_q + self.ALPHA * (reward + self.GAMMA * max_q_new- prev_q)
 
 
+    """
+    Hey, AI — let's save your strategy notebook (Q-table) to a file
+    This allows us to keep what the AI has learned even after the program ends
+    Use pickle to serialize the entire q-dictionary and write it to disk
+    """
+    def save_q_table(self, filename="q_table.pkl"):
+        with open(filename, "wb") as f:
+            pickle.dump(self.q, f)
+
+
+    """
+    Hey AI — before you start, check if you already have a strategy notebook saved
+    Use pickle to load the saved Q-table (the AI's past experiences)
+    """
+    def load_q_table(self, filename="q_table.pkl"):
+        if os.path.exists(filename):
+            with open(filename, "rb") as f:
+                try:
+                    self.q = pickle.load(f)
+                    print("- Q-table loaded from file.")
+                except EOFError:
+                    print("! File found but it's empty. Starting fresh.")
+                    self.q = {}
+        else:
+            print("! No saved Q-table found. Starting fresh.")
+
+
 """
 “This is the game master. It manages players, 
 turns, wins, losses, and draws.”
@@ -274,18 +309,18 @@ class TicTacToe:
             # Horizontal check
             for i in range(3):
                 if self.board[3 * i + 0] == player_ticker and self.board[3 * i + 1] == player_ticker and self.board[3 * i + 2] == player_ticker:
-                    print(f"! {self.board[3 * i + 0]} | {self.board[3 * i + 1]} | {self.board[3 * i + 2]} - {player_ticker}")
+                    #print(f"! {self.board[3 * i + 0]} | {self.board[3 * i + 1]} | {self.board[3 * i + 2]} - {player_ticker}")
                     return True, player_ticker
 
             # Vertical check 
             for j in range(3):
                 if self.board[j + 0] == player_ticker and self.board[j + 3] == player_ticker and self.board[j + 6] == player_ticker:
-                    print(f"! {self.board[j + 0]} | {self.board[j + 3]} | {self.board[j + 6]}")
+                    #print(f"! {self.board[j + 0]} | {self.board[j + 3]} | {self.board[j + 6]}")
                     return True, player_ticker
             
             # Diagonal check (top left to bottom right + top right to bottom left)
             if self.board[0] == player_ticker and self.board[4] == player_ticker and self.board[8] == player_ticker:
-                print(f"! {self.board[0]} | {self.board[4]} | {self.board[8]}")
+                #print(f"! {self.board[0]} | {self.board[4]} | {self.board[8]}")
                 return True, player_ticker
             
             # 
@@ -312,6 +347,9 @@ if __name__ == "__main__":
     ai_player_1 = AIPlayer()
     ai_player_2 = AIPlayer()
 
+    # Load existing Q-table if available
+    ai_player_1.load_q_table()
+
     print("\n> AI Training has started")
 
     ai_player_1.EPSILON = TRAINING_EPSILON
@@ -323,7 +361,44 @@ if __name__ == "__main__":
 
     print("\n> AI Training has ended.")
 
+    # Saved Q-table
+    ai_player_1.save_q_table()
+
+    # Freeze the brain (no more exploration)
     ai_player_1.EPSILON = 0 
+
+    # setup human leader
     human_player = HumanPlayer() 
-    game = TicTacToe(ai_player_1, human_player)
-    game.play()
+
+    win_streak = 0   # Track consecutive wins
+    best_streak = 0  # Optional: track your best ever streak
+
+    while True: 
+        game = TicTacToe(ai_player_1, human_player)
+        game.play()
+
+        # Detect who won 
+        board = game.board 
+        game_over, winner = game.is_game_over([AI_PLAYER,HUMAN_PLAYER])
+
+        if winner == AI_PLAYER:
+            win_streak += 1
+            print(f"\n [ AI win streak: {win_streak} ]")
+
+            # save if AI wins 10 in a row
+            if win_streak >= 10:
+                ai_player_1.save_q_table()
+                print("\n [ Q-table saved after AI has won 10 times in a row ]")
+                best_streak = max(best_streak,win_streak)
+                win_streak = 0  # optionally can be reset
+        else:
+            # ("\n [Human won or tied = streak reset.")
+            win_streak = 0  # lose streak
+
+        again = input("\n  Play again ? (y/n): ").strip().lower() 
+        if again != 'y':
+            # Clear the terminal screen
+            os.system('cls' if os.name == 'nt' else 'clear')
+
+            print("\n[ Thanks for playing Tic Tac Toe ]\n")
+            break 
