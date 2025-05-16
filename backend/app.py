@@ -23,8 +23,8 @@ And in each game, I’ll give it a 40% chance
 to just try something new, even if it doesn't seem smart. 
 Why? Because that's how we discover new tricks — exploration!”
 """
-TRAINING_EPOCHS = 10
-TRAINING_EPSILON = 0.4 # try % of new move 
+TRAINING_EPOCHS = 100000
+TRAINING_EPSILON = 0.4  
 
 
 """
@@ -59,16 +59,13 @@ class Player:
         def format_cell(i):
             return board[i] if board[i] != ' ' else str(i + 1)
 
-        print("\n")
+        print("\n= Tic Tac Toe =\n")
         print(f" {format_cell(0)} | {format_cell(1)} | {format_cell(2)} ")
         print("---|---|---")
         print(f" {format_cell(3)} | {format_cell(4)} | {format_cell(5)} ")
         print("---|---|---")
         print(f" {format_cell(6)} | {format_cell(7)} | {format_cell(8)} ")
         print("\n")
-
-    
-
 
 class HumanPlayer(Player):
 
@@ -89,6 +86,11 @@ class HumanPlayer(Player):
 
                 if not (move - 1 in range(9)):
                     raise ValueError 
+
+                if board[move - 1] != ' ':
+                    print("\n! That box has been filed. Try different one")
+                    continue # keep asking
+
             except ValueError:
                 print("\n! Invalid move, try again")
             else:
@@ -229,7 +231,7 @@ class TicTacToe:
             else: 
                 player = self.player2 
                 other_player = self.player1
-                player_tickers = (HUMAN_PLAYER, AI_PLAYER)
+                player_tickers = (HUMAN_PLAYER, AI_PLAYER) # (0, X)
 
             # check the game state (win , lose, draw)
             game_over , winner = self.is_game_over(player_tickers)
@@ -239,17 +241,17 @@ class TicTacToe:
                 if winner == player_tickers[0]:
                     player.show_board(self.board[:])
 
-                    print(f"\nWinner: {player.__class__.__name__}")
+                    print(f"> The Winner: {player.__class__.__name__}")
                     player.reward(REWARD_WIN, self.board[:]) # reward for algorithm learning,
                     other_player.reward(REWARD_LOSE, self.board[:])
                 elif winner == player_tickers[1]:
                     player.show_board(self.board[:])
-                    print(f"\nWinner: {other_player.__class__.__name__}")
+                    print(f"> The Winner: {other_player.__class__.__name__}")
                     other_player.reward(REWARD_WIN, self.board[:])
                     player.reward(REWARD_LOSE, self.board[:])
                 else: 
                     player.show_board(self.board[:])
-                    print("\nTie")
+                    print("> Tie")
                     player.reward(REWARD_TIE,self.board[:])
                 break
             
@@ -268,19 +270,22 @@ class TicTacToe:
 
         # consider both players ('X' and 'O' players)
         for player_ticker in player_tickers:
-            
+    
             # Horizontal check
             for i in range(3):
                 if self.board[3 * i + 0] == player_ticker and self.board[3 * i + 1] == player_ticker and self.board[3 * i + 2] == player_ticker:
+                    print(f"! {self.board[3 * i + 0]} | {self.board[3 * i + 1]} | {self.board[3 * i + 2]} - {player_ticker}")
                     return True, player_ticker
 
             # Vertical check 
             for j in range(3):
                 if self.board[j + 0] == player_ticker and self.board[j + 3] == player_ticker and self.board[j + 6] == player_ticker:
+                    print(f"! {self.board[j + 0]} | {self.board[j + 3]} | {self.board[j + 6]}")
                     return True, player_ticker
             
             # Diagonal check (top left to bottom right + top right to bottom left)
             if self.board[0] == player_ticker and self.board[4] == player_ticker and self.board[8] == player_ticker:
+                print(f"! {self.board[0]} | {self.board[4]} | {self.board[8]}")
                 return True, player_ticker
             
             # 
